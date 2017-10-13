@@ -35,7 +35,7 @@ if __name__ == '__main__':
     sh = logging.StreamHandler()
     sh.setLevel(logging.DEBUG)
 
-    formatter = logging.Formatter('%(asctime)s %(levelname)s - %(message)s', datefmt='%d/%m/%y %H:%M')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s - %(message)s', datefmt='%d/%m/%y %H:%M:%S')
     sh.setFormatter(formatter)
 
     logger.addHandler(sh)
