@@ -28,13 +28,12 @@ LCD_D5 = 24
 LCD_D6 = 23
 LCD_D7 = 18
 
-# Define some device constants
-LCD_WIDTH = 16    # Maximum characters per line
-LCD_CHR = True
-LCD_CMD = False
+LCD_WIDTH   = 16
+LCD_CHR     = True
+LCD_CMD     = False
 
-LCD_LINE_1 = 0x80 # LCD RAM address for the 1st line
-LCD_LINE_2 = 0xC0 # LCD RAM address for the 2nd line
+LCD_LINE_1  = 0x80 # LCD RAM address for the 1st line
+LCD_LINE_2  = 0xC0 # LCD RAM address for the 2nd line
 
 # Timing constants
 E_PULSE = 0.0005
@@ -44,9 +43,13 @@ LINES = {
     0: LCD_LINE_1,
     1: LCD_LINE_2,
 }
+LCD_HEIGHT  = len(LINES)
 
 class Display(object):
     def __init__(self):
+        self._width  = LCD_WIDTH
+        self._height = LCD_HEIGHT
+
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)       # Use BCM GPIO numbers
         GPIO.setup(LCD_E, GPIO.OUT)  # E
@@ -57,6 +60,12 @@ class Display(object):
         GPIO.setup(LCD_D7, GPIO.OUT) # DB7
 
         self._init_display()
+
+    def width(self):
+        return self._width
+
+    def height(self):
+        return self._height
 
     def _init_display(self):
         # Initialise display
@@ -126,11 +135,11 @@ class Display(object):
 
     def write_line(self, message, line = 0):
         # Send string to display
-        message = message.ljust(LCD_WIDTH, " ")
+        message = message.ljust(self._width, " ")
 
         self._write_cmd(LINES[line])
 
-        for i in range(LCD_WIDTH):
+        for i in range(self._width):
             self._write_char(ord(message[i]))
 
     def clear(self):
