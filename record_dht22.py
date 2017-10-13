@@ -12,6 +12,9 @@ API_KEY = "M0859271I8O5JBB9"
 BASE_URL = "https://api.thingspeak.com/update"
 UPDATE_INTERVAL = 120
 
+# View at:
+# https://thingspeak.com/channels/346025/private_show
+
 def update_multiple_fields(fields):
     try:
         logging.info('Sending update...')
