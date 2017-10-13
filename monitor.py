@@ -12,8 +12,7 @@ from twisted.internet.task import LoopingCall
 from twisted.web.client import Agent
 from twisted.python import log
 from twisted.logger import Logger
-
-from Display import Display
+from display import Display
 
 log.startLogging(sys.stdout)
 
