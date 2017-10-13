@@ -26,7 +26,8 @@ DEFAULT_DATA_DISPLAY = 'T/H: N/A'
 
 TEMPRATURE_FIELD_INDEX = 1
 HUMIDITY_FIELD_INDEX = 2
-
+SENSOR_DISPLAY_LINE = 0
+TIME_AGO_DISPLAY_LINE = 1
 #log.startLogging(sys.stdout)
 
 class Monitor(object):
@@ -39,9 +40,12 @@ class Monitor(object):
         observer.start()
 
         self._last_query = None
-        self._display_data = ''
         self._tasks = []
         self._display = Display()
+        self._notifiers = {
+            'display'    : self._notify_display,
+            'thingspeak' : self._notify_thingspeak,
+        }
 
         self._logger.info('Initialized {}'.format(self._name))
         self.start_tasks()
@@ -79,9 +83,13 @@ class Monitor(object):
         logger.addHandler(sh)
         return logger
 
-    def _notify_thingspeak(self, fields):
+    def _notify_thingspeak(self, sensor_readings):
         self._logger.debug('Sending update...')
 
+        fields = {
+            TEMPRATURE_FIELD_INDEX : sensor_readings['temprature'],
+            HUMIDITY_FIELD_INDEX   : sensor_readings['humidity']
+        }
         fields_url_part = '&'.join(['{}={}'.format(f,d) for f,d in fields.items()])
         uri = '{}?api_key={}&{}'.format(BASE_URL, API_KEY, fields_url_part)
 
@@ -91,14 +99,14 @@ class Monitor(object):
             self._logger.debug('Update Sent')
         d.addCallback(response)
 
-    def _update_display_data(self):
-        self._display.write_line(self._display_data, 0)
+    def _notify_display(self, sensor_readings):
+        self._display.write_line(self._format_sensor_readings(sensor_readings), SENSOR_DISPLAY_LINE)
 
     def _update_display_last_query(self):
         if not self._last_query:
             return
 
-        self._display.write_line(timeago.format(self._last_query), 1)
+        self._display.write_line(timeago.format(self._last_query), TIME_AGO_DISPLAY_LINE)
 
     def _read_dht22(self):
         self._logger.debug('Started reading from DHT22')
@@ -131,11 +139,8 @@ class Monitor(object):
         text = self._format_sensor_readings(sensor_readings)
         self._logger.info(text)
 
-        self._display.write_line(text, 0)
-        self._notify_thingspeak({
-            TEMPRATURE_FIELD_INDEX : sensor_readings['temprature'],
-            HUMIDITY_FIELD_INDEX   : sensor_readings['humidity']
-        })
+        for notifier in self._notifiers.values():
+            reactor.callWhenRunning(notifier, sensor_readings)
 
     def run(self):
         reactor.run()
