@@ -14,8 +14,6 @@ from twisted.python import log
 from twisted.logger import Logger
 from display import Display
 
-log.startLogging(sys.stdout)
-
 # View at:
 # https://thingspeak.com/channels/346025/private_show
 
@@ -23,22 +21,29 @@ DHT22_DATA_PIN = 20
 API_KEY = 'M0859271I8O5JBB9'
 BASE_URL = 'https://api.thingspeak.com/update'
 UPDATE_DISPLAY_INTERVAL = 1.0
-QUERY_INTERVAL = 120
+QUERY_INTERVAL = 300
 DEFAULT_DATA_DISPLAY = 'T/H: N/A'
 
 TEMPRATURE_FIELD_INDEX = 1
 HUMIDITY_FIELD_INDEX = 2
 
+#log.startLogging(sys.stdout)
+
 class Monitor(object):
     def __init__(self):
-        self._display = Display()
-        self._logger = self._make_logger()
+        self._name = 'Monitor/{}'.format(str(uuid.uuid4()))
+        self._logger = self._make_logger(self._name)
         self._logger.debug('Initialized Logger')
+
+        observer = log.PythonLoggingObserver()
+        observer.start()
+
         self._last_query = None
         self._display_data = ''
         self._tasks = []
+        self._display = Display()
 
-        self._logger.info('Initialized')
+        self._logger.info('Initialized Monitor')
         self.start_tasks()
 
     def __del__(self):
@@ -61,8 +66,8 @@ class Monitor(object):
             task.stop()
 
     @staticmethod
-    def _make_logger():
-        logger = logging.getLogger('Monitor/{}'.format(str(uuid.uuid4())))
+    def _make_logger(name):
+        logger = logging.getLogger(name)
         logger.setLevel(logging.DEBUG)
 
         sh = logging.StreamHandler()
@@ -82,7 +87,6 @@ class Monitor(object):
 
         agent = Agent(reactor)
         d = agent.request(bytes('GET', 'ascii'), bytes(uri, 'ascii'), None, None)#Headers({'User-Agent': ['Twisted Web Client Example']}), None)
-
         def response(ctx):
             self._logger.debug('Update Sent')
         d.addCallback(response)
