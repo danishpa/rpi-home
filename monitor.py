@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import time
+import sys
 import uuid
 import datetime
 import timeago
@@ -9,7 +9,13 @@ import RPi.GPIO as GPIO
 import Adafruit_DHT
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
+from twisted.web.client import Agent
+from twisted.python import log
+from twisted.logger import Logger
+
 from Display import Display
+
+log.startLogging(sys.stdout)
 
 # View at:
 # https://thingspeak.com/channels/346025/private_show
@@ -31,21 +37,29 @@ class Monitor(object):
         self._logger.debug('Initialized Logger')
         self._last_query = None
         self._display_data = ''
+        self._tasks = []
 
         self._logger.info('Initialized')
-        update_display = LoopingCall(self._update_display_last_query)
-        query = LoopingCall(self._query_sensors_and_notify)
-
-        self._tasks = [update_display, query]
-
-        update_display.start(UPDATE_DISPLAY_INTERVAL)
-        query.start(QUERY_INTERVAL)
+        self.start_tasks()
 
     def __del__(self):
         if self._display:
             self._display.clear()
 
         GPIO.cleanup()
+
+    def start_tasks(self):
+        update_display = LoopingCall(self._update_display_last_query)
+        update_display.start(UPDATE_DISPLAY_INTERVAL)
+        self._tasks.append(update_display)
+
+        query = LoopingCall(self._query_sensors_and_notify)
+        query.start(QUERY_INTERVAL)
+        self._tasks.append(query)
+
+    def stop_tasks(self):
+        for task in self._tasks:
+            task.stop()
 
     @staticmethod
     def _make_logger():
@@ -65,10 +79,14 @@ class Monitor(object):
         self._logger.debug('Sending update...')
 
         fields_url_part = '&'.join(['{}={}'.format(f,d) for f,d in fields.items()])
-        url = '{}?api_key={}&{}'.format(BASE_URL, API_KEY, fields_url_part)
-        response = urllib.request.urlopen(url, timeout=10.0)
+        uri = '{}?api_key={}&{}'.format(BASE_URL, API_KEY, fields_url_part)
 
-        self._logger.debug('Sent update ({})'.format(response.status))
+        agent = Agent(reactor)
+        d = agent.request(bytes('GET', 'ascii'), bytes(uri, 'ascii'), None, None)#Headers({'User-Agent': ['Twisted Web Client Example']}), None)
+
+        def response(ctx):
+            self._logger.debug('Update Sent')
+        d.addCallback(response)
 
     def _update_display_data(self):
         self._display.write_line(self._display_data, 0)
