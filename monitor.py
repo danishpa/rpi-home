@@ -43,7 +43,7 @@ class Monitor(object):
         self._tasks = []
         self._display = Display()
 
-        self._logger.info('Initialized Monitor')
+        self._logger.info('Initialized {}'.format(self._name))
         self.start_tasks()
 
     def __del__(self):
